@@ -1,19 +1,20 @@
 """Monte Carlo Tree Search — the conceptual heart of the engine.
 
-MCTS builds a search tree by repeating four phases per iteration. Read it as a
+MCTS builds a search tree by repeating four stages per iteration. Read it as a
 bandit-driven, anytime planning algorithm:
 
-  1. **Selection** — from the root, repeatedly descend to the child that maximises
-     a *tree policy* (a multi-armed-bandit rule balancing exploitation of
-     high-value children against exploration of rarely-visited ones), until we
+  1. **Select** (selection) — from the root, repeatedly descend to the child that
+     maximises a *tree policy* (a multi-armed-bandit rule balancing exploitation
+     of high-value children against exploration of rarely-visited ones), until we
      reach a node that is not yet fully expanded or is terminal.
-  2. **Expansion** — add one new child for an untried move.
-  3. **Simulation / evaluation** — estimate the value of the new leaf. Phase 1
-     does a uniform-random *rollout* to a terminal state (or a ply cap). Phase 2
-     replaces this with a neural value head — hence the pluggable
+  2. **Expand** (expansion) — add one new child for an untried move.
+  3. **Simulate** (simulation / evaluation) — estimate the value of the new leaf.
+     Phase 1 does a uniform-random *rollout* to a terminal state (or a ply cap).
+     Phase 2 replaces this with a neural value head — hence the pluggable
      ``evaluate_leaf`` hook.
-  4. **Backpropagation** — propagate the leaf value up to the root, **flipping
-     its sign at every level** because the players alternate in a zero-sum game.
+  4. **Backpropagate** (backpropagation) — propagate the leaf value up to the
+     root, **flipping its sign at every level** because the players alternate in a
+     zero-sum game.
 
 The whole search acts as a *policy-improvement operator*: the visit counts at the
 root form a better policy than the raw tree policy, which is exactly what Phase 2
@@ -124,7 +125,7 @@ def ucb1_select(node: Node, c: float) -> Node:
 # --- Leaf evaluation (pluggable; Phase 2 swaps rollout for the net) -----------
 
 def rollout(node: Node, rng: random.Random, max_plies: int = MAX_PLIES) -> float:
-    """Phase-1 leaf evaluation: a uniform-random playout to terminal or the cap.
+    """Stage 3 — Simulate (Phase-1 leaf evaluation): a uniform-random playout.
 
     Returns the outcome **from the perspective of the side to move at ``node``**:
     +1 if that side wins, -1 if it loses, 0 if the playout hits ``max_plies``
@@ -151,7 +152,7 @@ def rollout(node: Node, rng: random.Random, max_plies: int = MAX_PLIES) -> float
 # --- The four-phase loop -----------------------------------------------------
 
 def _select(root: Node, tree_policy: Callable[[Node, float], Node], c: float) -> Node:
-    """Phase 1 (Selection): descend by the tree policy to an expandable/terminal node."""
+    """Stage 1 — Select: descend by the tree policy to an expandable/terminal node."""
     node = root
     while node.is_fully_expanded() and not node.is_terminal():
         node = tree_policy(node, c)
@@ -159,7 +160,7 @@ def _select(root: Node, tree_policy: Callable[[Node, float], Node], c: float) ->
 
 
 def _expand(node: Node, rng: random.Random) -> Node:
-    """Phase 2 (Expansion): realise one untried move as a fresh child, and return it.
+    """Stage 2 — Expand: realise one untried move as a fresh child, and return it.
 
     A terminal (or already fully expanded) node is returned unchanged so it can be
     evaluated directly.
@@ -173,7 +174,7 @@ def _expand(node: Node, rng: random.Random) -> Node:
 
 
 def _backprop(node: Optional[Node], value: float) -> None:
-    """Phase 4 (Backpropagation): carry ``value`` to the root, flipping sign per level.
+    """Stage 4 — Backpropagate: carry ``value`` to the root, flipping sign per level.
 
     ``value`` enters from the perspective of the side to move at the leaf. The
     sign is flipped *before* adding at each step so that each node's ``W`` ends up
@@ -221,10 +222,10 @@ def mcts_search(
 
     root = Node(root_state, rng=rng)
     for _ in range(iterations):
-        leaf = _select(root, tree_policy, c)
-        leaf = _expand(leaf, rng)
-        value = evaluate_leaf(leaf)
-        _backprop(leaf, value)
+        leaf = _select(root, tree_policy, c)   # Stage 1 — Select
+        leaf = _expand(leaf, rng)              # Stage 2 — Expand
+        value = evaluate_leaf(leaf)            # Stage 3 — Simulate (rollout / net)
+        _backprop(leaf, value)                 # Stage 4 — Backpropagate
 
     if not root.children:
         # Degenerate (e.g. a terminal root); fall back to any legal move.
