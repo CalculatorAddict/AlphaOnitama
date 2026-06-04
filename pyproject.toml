@@ -1,0 +1,24 @@
+[project]
+name = "onitama"
+version = "0.1.0"
+description = "An MCTS Onitama engine with an AlphaZero-style self-play training loop."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+# Phase 1 is playable with just these. PyTorch/numpy live in the [ml] extra
+# so the default install stays light.
+dependencies = ["pygame", "pyperplan"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+ml = ["torch", "numpy"]
+
+[project.scripts]
+onitama = "onitama.play:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["onitama"]

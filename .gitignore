@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AlphaOnitama: hand-filled artefacts (not tracked)
+onitama/onitama_one_turn.pddl
+onitama/pddl_runner.py
